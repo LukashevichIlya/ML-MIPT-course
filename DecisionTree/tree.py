@@ -5,12 +5,12 @@ from sklearn.base import BaseEstimator
 def entropy(y):
     """
     Computes entropy of the provided distribution. Use log(value + eps) for numerical stability
-    
+
     Parameters
     ----------
     y : np.array of type float with shape (n_objects, n_classes)
         One-hot representation of class labels for corresponding subset
-    
+
     Returns
     -------
     float
@@ -26,12 +26,12 @@ def entropy(y):
 def gini(y):
     """
     Computes the Gini impurity of the provided distribution
-    
+
     Parameters
     ----------
     y : np.array of type float with shape (n_objects, n_classes)
         One-hot representation of class labels for corresponding subset
-    
+
     Returns
     -------
     float
@@ -46,12 +46,12 @@ def gini(y):
 def variance(y):
     """
     Computes the variance of the provided target values subset
-    
+
     Parameters
     ----------
     y : np.array of type float with shape (n_objects, 1)
         Target values vector
-    
+
     Returns
     -------
     float
@@ -65,12 +65,12 @@ def mad_median(y):
     """
     Computes the mean absolute deviation from the median in the
     provided target values subset
-    
+
     Parameters
     ----------
     y : np.array of type float with shape (n_objects, 1)
         Target values vector
-    
+
     Returns
     -------
     float
@@ -129,7 +129,7 @@ class DecisionTree(BaseEstimator):
     def make_split(self, feature_index, threshold, X_subset, y_subset):
         """
         Makes split of the provided data subset and target values using provided feature and threshold
-        
+
         Parameters
         ----------
         feature_index : int
@@ -141,10 +141,10 @@ class DecisionTree(BaseEstimator):
         X_subset : np.array of type float with shape (n_objects, n_features)
             Feature matrix representing the selected subset
 
-        y_subset : np.array of type float with shape (n_objects, n_classes) in classification 
-                   (n_objects, 1) in regression 
+        y_subset : np.array of type float with shape (n_objects, n_classes) in classification
+                   (n_objects, 1) in regression
             One-hot representation of class labels for corresponding subset
-        
+
         Returns
         -------
         (X_left, y_left) : tuple of np.arrays of same type as input X_subset and y_subset
@@ -153,22 +153,17 @@ class DecisionTree(BaseEstimator):
             Part of the provided subset where selected feature x^j >= threshold
         """
 
-        left_indices = np.argwhere(X_subset[:, feature_index] < threshold)
-        left_indices = [item for sublist in left_indices for item in sublist]
-        right_indices = np.argwhere(X_subset[:, feature_index] >= threshold)
-        right_indices = [item for sublist in right_indices for item in sublist]
-
-        X_left = X_subset[left_indices]
-        X_right = X_subset[right_indices]
-        y_left = y_subset[left_indices]
-        y_right = y_subset[right_indices]
+        X_left = X_subset[X_subset[:, feature_index] < threshold]
+        X_right = X_subset[X_subset[:, feature_index] >= threshold]
+        y_left = y_subset[X_subset[:, feature_index] < threshold]
+        y_right = y_subset[X_subset[:, feature_index] >= threshold]
 
         return (X_left, y_left), (X_right, y_right)
 
     def make_split_only_y(self, feature_index, threshold, X_subset, y_subset):
         """
         Split only target values into two subsets with specified feature and threshold
-        
+
         Parameters
         ----------
         feature_index : int
@@ -180,44 +175,39 @@ class DecisionTree(BaseEstimator):
         X_subset : np.array of type float with shape (n_objects, n_features)
             Feature matrix representing the selected subset
 
-        y_subset : np.array of type float with shape (n_objects, n_classes) in classification 
-                   (n_objects, 1) in regression 
+        y_subset : np.array of type float with shape (n_objects, n_classes) in classification
+                   (n_objects, 1) in regression
             One-hot representation of class labels for corresponding subset
-        
+
         Returns
         -------
-        y_left : np.array of type float with shape (n_objects_left, n_classes) in classification 
-                   (n_objects, 1) in regression 
+        y_left : np.array of type float with shape (n_objects_left, n_classes) in classification
+                   (n_objects, 1) in regression
             Part of the provided subset where selected feature x^j < threshold
 
-        y_right : np.array of type float with shape (n_objects_right, n_classes) in classification 
-                   (n_objects, 1) in regression 
+        y_right : np.array of type float with shape (n_objects_right, n_classes) in classification
+                   (n_objects, 1) in regression
             Part of the provided subset where selected feature x^j >= threshold
         """
 
-        left_indices = np.argwhere(X_subset[:, feature_index] < threshold)
-        left_indices = [item for sublist in left_indices for item in sublist]
-        right_indices = np.argwhere(X_subset[:, feature_index] >= threshold)
-        right_indices = [item for sublist in right_indices for item in sublist]
-
-        y_left = y_subset[left_indices]
-        y_right = y_subset[right_indices]
+        y_left = y_subset[X_subset[:, feature_index] < threshold]
+        y_right = y_subset[X_subset[:, feature_index] >= threshold]
 
         return y_left, y_right
 
     def choose_best_split(self, X_subset, y_subset):
         """
         Greedily select the best feature and best threshold w.r.t. selected criterion
-        
+
         Parameters
         ----------
         X_subset : np.array of type float with shape (n_objects, n_features)
             Feature matrix representing the selected subset
 
-        y_subset : np.array of type float with shape (n_objects, n_classes) in classification 
-                   (n_objects, 1) in regression 
+        y_subset : np.array of type float with shape (n_objects, n_classes) in classification
+                   (n_objects, 1) in regression
             One-hot representation of class labels or target values for corresponding subset
-        
+
         Returns
         -------
         feature_index : int
@@ -230,10 +220,11 @@ class DecisionTree(BaseEstimator):
         best_func_value = -np.inf
         feature_index = 0
         threshold = np.inf
-        EPS = 1e-1
+        EPS = 1e-2
 
         for i in range(X_subset.shape[1]):
             thresholds = np.unique(np.random.choice(X_subset[:, i], 5)) + EPS
+            # thresholds = np.unique(X_subset[:, i]) + EPS
             for thr in thresholds:
                 y_left, y_right = self.make_split_only_y(i, thr, X_subset, y_subset)
                 functional = self.criterion(X_subset) - \
@@ -249,16 +240,16 @@ class DecisionTree(BaseEstimator):
     def make_tree(self, X_subset, y_subset):
         """
         Recursively builds the tree
-        
+
         Parameters
         ----------
         X_subset : np.array of type float with shape (n_objects, n_features)
             Feature matrix representing the selected subset
 
-        y_subset : np.array of type float with shape (n_objects, n_classes) in classification 
-                   (n_objects, 1) in regression 
+        y_subset : np.array of type float with shape (n_objects, n_classes) in classification
+                   (n_objects, 1) in regression
             One-hot representation of class labels or target values for corresponding subset
-        
+
         Returns
         -------
         root_node : Node class instance
@@ -286,16 +277,16 @@ class DecisionTree(BaseEstimator):
     def fit(self, X, y):
         """
         Fit the model from scratch using the provided data
-        
+
         Parameters
         ----------
         X : np.array of type float with shape (n_objects, n_features)
             Feature matrix representing the data to train on
 
-        y : np.array of type int with shape (n_objects, 1) in classification 
-                   of type float with shape (n_objects, 1) in regression 
+        y : np.array of type int with shape (n_objects, 1) in classification
+                   of type float with shape (n_objects, 1) in regression
             Column vector of class labels in classification or target values in regression
-        
+
         """
         assert len(y.shape) == 2 and len(y) == len(X), 'Wrong y shape'
         self.criterion, self.classification = self.all_criterions[self.criterion_name]
@@ -309,7 +300,7 @@ class DecisionTree(BaseEstimator):
     def predict(self, X):
         """
         Predict the target value or class label the model from scratch using the provided data
-        
+
         Parameters
         ----------
         X : np.array of type float with shape (n_objects, n_features)
@@ -317,10 +308,10 @@ class DecisionTree(BaseEstimator):
 
         Returns
         -------
-        y_predicted : np.array of type int with shape (n_objects, 1) in classification 
-                   (n_objects, 1) in regression 
+        y_predicted : np.array of type int with shape (n_objects, 1) in classification
+                   (n_objects, 1) in regression
             Column vector of class labels in classification or target values in regression
-        
+
         """
         y_predicted = np.zeros(X.shape[0])
 
@@ -345,7 +336,7 @@ class DecisionTree(BaseEstimator):
         """
         Only for classification
         Predict the class probabilities using the provided data
-        
+
         Parameters
         ----------
         X : np.array of type float with shape (n_objects, n_features)
@@ -355,7 +346,7 @@ class DecisionTree(BaseEstimator):
         -------
         y_predicted_probs : np.array of type float with shape (n_objects, n_classes)
             Probabilities of each class for the provided objects
-        
+
         """
         assert self.classification, 'Available only for classification problem'
 
